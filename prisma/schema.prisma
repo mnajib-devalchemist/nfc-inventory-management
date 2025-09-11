@@ -1,0 +1,247 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm, uuid_ossp(map: "uuid-ossp")]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id                  String            @id @default(cuid())
+  name                String?
+  email               String            @unique
+  emailVerified       DateTime?         @map("email_verified")
+  image               String?
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  preferences         Json?             @default("{}")
+  subscriptionTier    String            @default("free") @map("subscription_tier")
+  defaultHouseholdId  String?           @map("default_household_id")
+  accounts            Account[]
+  households          HouseholdMember[]
+  sessions            Session[]
+  createdItems        Item[]            @relation("CreatedItems")
+  borrowedItems       Item[]            @relation("BorrowedItems")
+  uploadedPhotos      ItemPhoto[]
+  defaultHousehold    Household?        @relation("DefaultHousehold", fields: [defaultHouseholdId], references: [id])
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Household {
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  settings         Json?             @default("{}")
+  members          HouseholdMember[]
+  locations        Location[]
+  items            Item[]
+  tags             Tag[]
+  defaultForUsers  User[]            @relation("DefaultHousehold")
+
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  householdId String    @map("household_id")
+  role        String    @default("member")
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  permissions Json?     @default("{}")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, householdId])
+  @@map("household_members")
+}
+
+model Location {
+  id           String       @id @default(uuid()) @db.Uuid
+  householdId  String       @map("household_id")
+  name         String       @db.VarChar(100)
+  description  String?
+  parentId     String?      @map("parent_id") @db.Uuid
+  path         String
+  level        Int          @default(0)
+  locationType LocationType @default(ROOM) @map("location_type")
+  itemCount    Int          @default(0) @map("item_count")
+  totalValue   Decimal      @default(0) @map("total_value") @db.Decimal(10, 2)
+  lastAccessed DateTime?    @map("last_accessed")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  household    Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  parent       Location?    @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Location[]   @relation("LocationHierarchy")
+  items        Item[]
+
+  @@index([householdId, parentId])
+  @@index([path])
+  @@index([name, householdId])
+  @@index([locationType, householdId])
+  @@index([level])
+  @@map("locations")
+}
+
+model Item {
+  id            String                   @id @default(uuid()) @db.Uuid
+  householdId   String                   @map("household_id")
+  locationId    String                   @map("location_id") @db.Uuid
+  name          String                   @db.VarChar(200)
+  description   String?
+  quantity      Int                      @default(1)
+  unit          String                   @default("piece") @db.VarChar(20)
+  purchasePrice Decimal?                 @map("purchase_price") @db.Decimal(10, 2)
+  currentValue  Decimal?                 @map("current_value") @db.Decimal(10, 2)
+  purchaseDate  DateTime?                @map("purchase_date") @db.Date
+  status        ItemStatus               @default(AVAILABLE)
+  borrowedBy    String?                  @map("borrowed_by")
+  borrowedAt    DateTime?                @map("borrowed_at")
+  borrowedUntil DateTime?                @map("borrowed_until")
+  metadata      Json                     @default("{}")
+  searchVector  Unsupported("tsvector")? @map("search_vector")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+  createdBy     String                   @map("created_by")
+  
+  // Relations
+  household     Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  location      Location                 @relation(fields: [locationId], references: [id])
+  creator       User                     @relation("CreatedItems", fields: [createdBy], references: [id])
+  borrower      User?                    @relation("BorrowedItems", fields: [borrowedBy], references: [id])
+  photos        ItemPhoto[]
+  tags          ItemTag[]
+
+  @@index([householdId, locationId])
+  @@index([createdBy, createdAt(sort: Desc)])
+  @@index([status, borrowedBy])
+  @@index([name])
+  @@index([purchaseDate])
+  @@index([status, householdId])
+  @@map("items")
+}
+
+model ItemPhoto {
+  id                  String      @id @default(uuid()) @db.Uuid
+  itemId              String      @map("item_id") @db.Uuid
+  originalUrl         String      @map("original_url")
+  thumbnailUrl        String      @map("thumbnail_url")
+  optimizedUrl        String?     @map("optimized_url")
+  filename            String      @db.VarChar(255)
+  mimeType            String      @map("mime_type") @db.VarChar(50)
+  fileSize            Int         @map("file_size")
+  width               Int?
+  height              Int?
+  processingStatus    PhotoStatus @default(PENDING) @map("processing_status")
+  optimizationSavings Decimal?    @map("optimization_savings") @db.Decimal(5, 2)
+  displayOrder        Int         @default(0) @map("display_order")
+  isPrimary           Boolean     @default(false) @map("is_primary")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  uploadedBy          String      @map("uploaded_by")
+  
+  // Relations
+  item                Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  uploader            User        @relation(fields: [uploadedBy], references: [id])
+
+  @@index([itemId, displayOrder])
+  @@index([processingStatus])
+  @@map("item_photos")
+}
+
+model Tag {
+  id          String   @id @default(uuid()) @db.Uuid
+  householdId String   @map("household_id")
+  name        String   @db.VarChar(50)
+  color       String   @default("#6B7280") @db.VarChar(7)
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items       ItemTag[]
+
+  @@unique([householdId, name])
+  @@index([usageCount(sort: Desc)])
+  @@index([householdId, usageCount(sort: Desc)])
+  @@map("tags")
+}
+
+model ItemTag {
+  itemId String @map("item_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+  
+  // Relations
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+  @@map("item_tags")
+}
+
+enum LocationType {
+  BUILDING
+  ROOM
+  FURNITURE
+  CONTAINER
+  AREA
+}
+
+enum ItemStatus {
+  AVAILABLE
+  BORROWED
+  MAINTENANCE
+  LOST
+  SOLD
+}
+
+enum PhotoStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

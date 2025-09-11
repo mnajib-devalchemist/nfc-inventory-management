@@ -1,0 +1,103 @@
+schema: 1
+story: '1.2'
+story_title: 'Core Data Models & API Foundation'
+gate: FAIL
+status_reason: 'Critical security vulnerability - hardcoded household ID allows cross-tenant data access'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-09-09T12:00:00Z'
+
+top_issues:
+  - id: SEC-002
+    severity: high
+    title: 'Authentication bypass via hardcoded household ID'
+    description: 'API routes use hardcoded household-1 instead of user session context'
+    files: ['app/api/v1/items/route.ts:38']
+    suggested_owner: dev
+
+waiver: 
+  active: false
+
+quality_score: 78
+expires: '2025-09-23T12:00:00Z'
+
+evidence:
+  tests_reviewed: 24
+  risks_identified: 5
+
+risk_summary:
+  totals:
+    critical: 1
+    high: 0
+    medium: 3
+    low: 1
+  highest:
+    id: SEC-002
+    score: 9
+    title: 'Authentication bypass via hardcoded household ID'
+  recommendations:
+    must_fix:
+      - 'Implement proper household context resolution from user session'
+      - 'Add cross-household access prevention tests'
+    monitor:
+      - 'Add database query performance monitoring'
+      - 'Validate file upload timeout handling'
+
+test_design:
+  scenarios_total: 24
+  by_level:
+    unit: 12
+    integration: 8
+    e2e: 4
+  by_priority:
+    p0: 8
+    p1: 12
+    p2: 4
+  coverage_gaps: ['AC7: Household isolation testing missing']
+
+trace:
+  totals:
+    requirements: 10
+    full: 8
+    partial: 2
+    none: 0
+  planning_ref: 'docs/qa/assessments/1.2-test-design-20250909.md'
+  uncovered:
+    - ac: 'AC7'
+      reason: 'Critical household isolation security gap'
+  notes: 'See docs/qa/assessments/1.2-trace-20250909.md'
+
+nfr_validation:
+  security:
+    status: FAIL
+    notes: 'Critical authentication bypass vulnerability - hardcoded household ID'
+  performance:
+    status: CONCERNS
+    notes: 'Database indexing adequate but monitoring gaps identified'
+  reliability:
+    status: PASS
+    notes: 'Error handling and validation comprehensive'
+  maintainability:
+    status: PASS
+    notes: 'Code structure follows standards, good documentation'
+
+recommendations:
+  immediate:
+    - action: 'Replace hardcoded household ID with proper session context resolution'
+      refs: ['app/api/v1/items/route.ts:38', 'app/api/v1/locations/route.ts']
+      implementation: 'Create lib/utils/household-context.ts and update NextAuth callbacks'
+    - action: 'Extend NextAuth session types to include householdId'
+      refs: ['lib/types/next-auth.d.ts']
+      implementation: 'Add householdId to Session and JWT interfaces'
+    - action: 'Update development seed data to create proper household relationships'
+      refs: ['lib/db/seeds/dev-data.ts']
+      implementation: 'Add seedHouseholds() function for realistic test data'
+    - action: 'Implement comprehensive household isolation security tests'
+      refs: ['tests/integration/api/household-isolation.test.ts']
+      implementation: 'Test cross-household access prevention and revoked access handling'
+  future:
+    - action: 'Add database performance monitoring for query optimization'
+      refs: ['lib/db/optimization.ts']
+      implementation: 'Monitor query execution times and index usage'
+    - action: 'Implement file upload size limits and async processing'
+      refs: ['app/api/v1/items/photos/']
+      implementation: 'Add file validation middleware and background processing'
