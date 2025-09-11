@@ -20,9 +20,7 @@ const serverEnvSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   
-  // AWS Services
-  AWS_ACCESS_KEY_ID: z.string().optional(),
-  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  // AWS Services (other AWS configs below in dedicated section)
   
   // External Service Secrets
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
@@ -34,6 +32,13 @@ const serverEnvSchema = z.object({
   ADMIN_DATABASE_URL: z.string().optional(),
   ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email').optional(),
   ENABLE_ADMIN_PANEL: z.string().transform(val => val === 'true').default('false'),
+  
+  // AWS Configuration
+  AWS_REGION: z.string().default('us-east-1'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(), 
+  AWS_S3_BUCKET_NAME: z.string().optional(),
+  AWS_CLOUDFRONT_DOMAIN: z.string().optional(),
   
   // Application Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

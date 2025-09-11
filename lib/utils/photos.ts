@@ -2,6 +2,8 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs/promises';
 import { generateSecureFilename } from './file-validation';
+import { uploadPhotoToS3, deletePhotoFromS3, S3UploadResult } from './aws-s3';
+import { serverEnv } from './env';
 
 /**
  * Photo processing utilities with Sharp.js
@@ -44,6 +46,27 @@ export interface ProcessedImageResult {
     format: string;
     size: number;
     thumbnailSize: number;
+  };
+}
+
+/**
+ * S3 upload result interface
+ */
+export interface PhotoUploadResult {
+  photoUrl: string;
+  thumbnailUrl: string;
+  filename: string;
+  thumbnailFilename: string;
+  metadata: {
+    width: number;
+    height: number;
+    format: string;
+    size: number;
+    thumbnailSize: number;
+  };
+  s3Data: {
+    photo: S3UploadResult;
+    thumbnail: S3UploadResult;
   };
 }
 
@@ -385,4 +408,128 @@ export async function cleanupOrphanedPhotos(maxAgeMs: number = 7 * 24 * 60 * 60 
     console.error('Error during photo cleanup:', error);
     return { deletedFiles: 0, freedSpaceBytes: 0 };
   }
+}
+
+/**
+ * Process image and upload to S3 storage
+ * Handles both local development and cloud production storage
+ */
+export async function processAndUploadPhoto(
+  fileBuffer: Buffer,
+  householdId: string,
+  metadata: Record<string, string> = {}
+): Promise<PhotoUploadResult> {
+  // First process the image
+  const originalFilename = metadata.originalName || 'upload.jpg';
+  const itemId = metadata.itemId || 'temp-item';
+  const processed = await processImage(fileBuffer, originalFilename, itemId);
+  
+  // Check if we should use S3 or local storage
+  const useS3 = serverEnv.NODE_ENV === 'production' || 
+                (serverEnv.AWS_S3_BUCKET_NAME && 
+                 serverEnv.AWS_ACCESS_KEY_ID && 
+                 serverEnv.AWS_SECRET_ACCESS_KEY);
+
+  if (useS3) {
+    // Upload to S3
+    const s3Results = await uploadPhotoToS3(
+      householdId,
+      processed.processedBuffer,
+      processed.thumbnailBuffer,
+      processed.filename,
+      processed.thumbnailFilename,
+      {
+        ...metadata,
+        originalFormat: processed.metadata.format,
+        width: processed.metadata.width.toString(),
+        height: processed.metadata.height.toString(),
+      }
+    );
+
+    return {
+      photoUrl: s3Results.photo.cdnUrl || s3Results.photo.url,
+      thumbnailUrl: s3Results.thumbnail.cdnUrl || s3Results.thumbnail.url,
+      filename: processed.filename,
+      thumbnailFilename: processed.thumbnailFilename,
+      metadata: processed.metadata,
+      s3Data: s3Results,
+    };
+  } else {
+    // Development: Save locally (existing logic)
+    const localResults = await saveProcessedImageLocally(processed, householdId);
+    
+    return {
+      photoUrl: localResults.photoPath,
+      thumbnailUrl: localResults.thumbnailPath,
+      filename: processed.filename,
+      thumbnailFilename: processed.thumbnailFilename,
+      metadata: processed.metadata,
+      s3Data: {
+        photo: {
+          key: localResults.photoPath,
+          url: localResults.photoPath,
+          size: processed.metadata.size,
+          etag: '',
+        },
+        thumbnail: {
+          key: localResults.thumbnailPath,
+          url: localResults.thumbnailPath,
+          size: processed.metadata.thumbnailSize,
+          etag: '',
+        },
+      },
+    };
+  }
+}
+
+/**
+ * Delete photo from storage (S3 or local)
+ */
+export async function deletePhotoFromStorage(photoUrl: string, thumbnailUrl?: string): Promise<void> {
+  const useS3 = serverEnv.NODE_ENV === 'production' || photoUrl.includes('amazonaws.com') || 
+                (serverEnv.AWS_CLOUDFRONT_DOMAIN && photoUrl.includes(serverEnv.AWS_CLOUDFRONT_DOMAIN));
+
+  if (useS3) {
+    await deletePhotoFromS3(photoUrl, thumbnailUrl);
+  } else {
+    // Local file deletion
+    try {
+      await fs.unlink(photoUrl);
+      if (thumbnailUrl) {
+        await fs.unlink(thumbnailUrl);
+      }
+    } catch (error) {
+      console.error('Local file deletion error:', error);
+      // Don't throw - file might already be deleted
+    }
+  }
+}
+
+/**
+ * Save processed image locally (development only)
+ */
+async function saveProcessedImageLocally(
+  processed: ProcessedImageResult,
+  householdId: string
+): Promise<{ photoPath: string; thumbnailPath: string }> {
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads', householdId);
+  const thumbnailDir = path.join(uploadDir, 'thumbnails');
+
+  // Ensure directories exist
+  await fs.mkdir(uploadDir, { recursive: true });
+  await fs.mkdir(thumbnailDir, { recursive: true });
+
+  const photoPath = path.join(uploadDir, processed.filename);
+  const thumbnailPath = path.join(thumbnailDir, processed.thumbnailFilename);
+
+  // Save files
+  await Promise.all([
+    fs.writeFile(photoPath, processed.processedBuffer),
+    fs.writeFile(thumbnailPath, processed.thumbnailBuffer),
+  ]);
+
+  return {
+    photoPath: `/uploads/${householdId}/${processed.filename}`,
+    thumbnailPath: `/uploads/${householdId}/thumbnails/${processed.thumbnailFilename}`,
+  };
 }

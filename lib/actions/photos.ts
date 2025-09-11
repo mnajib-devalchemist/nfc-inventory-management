@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth';
 import { validateImageFile } from '@/lib/utils/file-validation';
-import { processPhotoUpload, deleteItemPhotos } from '@/lib/utils/photos';
+import { processAndUploadPhoto, deletePhotoFromStorage } from '@/lib/utils/photos';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -38,8 +38,17 @@ export async function uploadPhotoAction(itemId: string, formData: FormData) {
       };
     }
 
-    // 4. Process and store the photo securely
-    const photoResult = await processPhotoUpload(file, itemId);
+    // 4. Process and store the photo securely (S3 or local)
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const photoResult = await processAndUploadPhoto(
+      fileBuffer,
+      session.user.householdId!, // We know this exists from auth
+      {
+        itemId,
+        uploadedBy: session.user.id,
+        originalName: file.name,
+      }
+    );
 
     // 5. TODO: Update database with photo information
     // This would integrate with the items service to store photo metadata
@@ -109,7 +118,8 @@ export async function removePhotoAction(itemId: string, photoId?: string) {
     }
     
     // Remove all photos for the item (MVP approach - single photo per item)
-    await deleteItemPhotos(itemId);
+    // TODO: Get photo URLs from database and delete them
+    // For now, this is a placeholder - photos would be deleted when item is deleted
 
     // 4. TODO: Update database to remove photo references
     // await itemsService.removeItemPhotos(itemId);
