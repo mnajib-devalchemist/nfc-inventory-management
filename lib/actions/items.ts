@@ -23,8 +23,39 @@ interface FormState {
 }
 
 /**
- * Server action for creating a new inventory item
- * Uses React 19 useActionState pattern with comprehensive validation
+ * Server action for creating a new inventory item with React 19 useActionState pattern.
+ * 
+ * Handles complete item creation workflow including authentication verification,
+ * data validation using Zod schemas, database transaction management, and path
+ * revalidation for optimal Next.js cache management.
+ * 
+ * @route Server Action (called via useActionState)
+ * @access Private (requires authentication)
+ * @since 1.3.0
+ * 
+ * @param prevState - Previous form state from React 19 useActionState
+ * @param formData - Form data from client submission containing item fields
+ * @returns Promise resolving to updated form state with success/error information
+ * 
+ * @throws {ValidationError} When form data fails Zod schema validation
+ * @throws {AuthenticationError} When user session is invalid or missing
+ * @throws {DatabaseError} When item creation fails due to database constraints
+ * 
+ * @example Usage in React 19 component
+ * ```typescript
+ * const [state, formAction, isPending] = useActionState(createItemAction, {
+ *   success: false,
+ *   error: null,
+ * });
+ * 
+ * return (
+ *   <form action={formAction}>
+ *     <input name="name" required />
+ *     <input name="locationId" required />
+ *     <button type="submit">Create Item</button>
+ *   </form>
+ * );
+ * ```
  */
 export async function createItemAction(prevState: FormState, formData: FormData): Promise<FormState> {
   try {

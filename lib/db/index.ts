@@ -55,4 +55,7 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
+// Re-export extension utilities for easy access
+export * from './extensions';
+
 export default prisma;

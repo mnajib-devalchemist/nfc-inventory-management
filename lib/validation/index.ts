@@ -12,6 +12,9 @@ export * from './items';
 // Location validation schemas  
 export * from './locations';
 
+// Search validation schemas
+export * from './search';
+
 // Re-export commonly used types and functions
 export type {
   CreateItemInput,
@@ -27,6 +30,14 @@ export type {
   SearchLocationsInput,
   MoveLocationInput,
 } from './locations';
+
+export type {
+  SearchQueryInput,
+  SearchFiltersInput,
+  AdvancedSearchQueryInput,
+  SearchSuggestionsQueryInput,
+  SearchAnalyticsQueryInput,
+} from './search';
 
 export type {
   ValidationResult,
@@ -51,6 +62,17 @@ export {
   validateSearchLocations,
   validateMoveLocation,
 } from './locations';
+
+export {
+  validateSearchQuery,
+  validateAdvancedSearchQuery,
+  validateSearchSuggestionsQuery,
+  validateSearchAnalyticsQuery,
+  validateSearchMethod,
+  transformSearchParams,
+  sanitizeSearchText,
+  validateSearchRateLimit,
+} from './search';
 
 export {
   safeValidate,

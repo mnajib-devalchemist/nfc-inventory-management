@@ -70,17 +70,19 @@ model VerificationToken {
 }
 
 model Household {
-  id               String            @id @default(cuid())
+  id               String              @id @default(cuid())
   name             String
   description      String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  settings         Json?             @default("{}")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  settings         Json?               @default("{}")
   members          HouseholdMember[]
   locations        Location[]
   items            Item[]
   tags             Tag[]
-  defaultForUsers  User[]            @relation("DefaultHousehold")
+  searchAnalytics  SearchAnalytics[]
+  searchQueue      SearchUpdateQueue[]
+  defaultForUsers  User[]              @relation("DefaultHousehold")
 
   @@map("households")
 }
@@ -156,6 +158,7 @@ model Item {
   borrower      User?                    @relation("BorrowedItems", fields: [borrowedBy], references: [id])
   photos        ItemPhoto[]
   tags          ItemTag[]
+  searchQueue   SearchUpdateQueue[]
 
   @@index([householdId, locationId])
   @@index([createdBy, createdAt(sort: Desc)])
@@ -223,6 +226,44 @@ model ItemTag {
   @@map("item_tags")
 }
 
+model SearchAnalytics {
+  id             String                  @id @default(uuid()) @db.Uuid
+  householdId    String                  @map("household_id")
+  queryLength    Int                     @map("query_length")
+  resultCount    Int                     @map("result_count")
+  responseTimeMs Int                     @map("response_time_ms")
+  searchMethod   SearchMethod            @map("search_method")
+  timestamp      DateTime                @default(now())
+  
+  // Relations
+  household      Household               @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  
+  @@index([householdId, timestamp(sort: Desc)])
+  @@index([responseTimeMs, resultCount])
+  @@map("search_analytics")
+}
+
+model SearchUpdateQueue {
+  id           String                  @id @default(uuid()) @db.Uuid
+  itemId       String                  @map("item_id") @db.Uuid
+  householdId  String                  @map("household_id")
+  priority     Int                     @default(5)
+  createdAt    DateTime                @default(now()) @map("created_at")
+  processedAt  DateTime?               @map("processed_at")
+  status       SearchQueueStatus       @default(PENDING)
+  retryCount   Int                     @default(0) @map("retry_count")
+  errorMessage String?                 @map("error_message")
+  
+  // Relations
+  item         Item                    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  household    Household               @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  
+  @@unique([itemId])
+  @@index([status, priority(sort: Desc), createdAt(sort: Asc)])
+  @@index([processedAt])
+  @@map("search_update_queue")
+}
+
 enum LocationType {
   BUILDING
   ROOM
@@ -240,6 +281,19 @@ enum ItemStatus {
 }
 
 enum PhotoStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SearchMethod {
+  FULL_TEXT_SEARCH
+  TRIGRAM_SEARCH
+  ILIKE_FALLBACK
+}
+
+enum SearchQueueStatus {
   PENDING
   PROCESSING
   COMPLETED

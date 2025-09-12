@@ -66,18 +66,41 @@ export interface FileValidationResult {
 }
 
 /**
- * Validates an image file with comprehensive security checks
+ * Validates an image file with comprehensive security checks to prevent malicious uploads.
  * 
- * @param file - The file to validate
- * @returns Promise resolving to validation result with security checks
+ * Implements multi-layered security validation including file size limits, MIME type verification,
+ * filename sanitization, magic byte validation, and content structure verification. This function
+ * is critical for SEC-003 risk mitigation and prevents file upload attacks.
  * 
- * @example
+ * @param file - The File object to validate (from HTML input or drag-drop)
+ * @returns Promise resolving to validation result with security assessment
+ * @throws Never throws - all errors are captured in the validation result
+ * 
+ * @example Basic file validation
  * ```typescript
- * const result = await validateImageFile(uploadedFile);
+ * const fileInput = document.querySelector('input[type="file"]');
+ * const file = fileInput.files[0];
+ * 
+ * const result = await validateImageFile(file);
  * if (!result.valid) {
  *   console.error('File validation failed:', result.error);
+ *   displayErrorMessage(result.error);
+ * } else {
+ *   console.log('File passed all security checks');
+ *   proceedWithUpload(file);
  * }
  * ```
+ * 
+ * @example Handling validation warnings
+ * ```typescript
+ * const result = await validateImageFile(droppedFile);
+ * if (result.valid && result.warnings?.length > 0) {
+ *   console.warn('File valid but has warnings:', result.warnings);
+ * }
+ * ```
+ * 
+ * @since 1.3.0
+ * @category Security Utilities
  */
 export async function validateImageFile(file: File): Promise<FileValidationResult> {
   try {

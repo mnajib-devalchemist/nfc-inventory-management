@@ -90,16 +90,52 @@ const initialState: FormState = {
 };
 
 /**
- * ItemForm - React 19 useActionState form for item creation/editing
+ * ItemForm - React 19 useActionState form for comprehensive item creation and editing.
  * 
- * Implements comprehensive form handling with:
- * - React 19 useActionState for server actions
- * - useOptimistic for immediate UI feedback
- * - Photo upload integration with security validation
- * - Location selection with inline creation
- * - Mobile-responsive design
+ * This component provides a complete item management interface with modern React 19 patterns,
+ * security-focused photo upload integration, hierarchical location selection, and mobile-responsive
+ * design. Implements optimistic UI updates for immediate user feedback during server operations.
  * 
  * @component
+ * @category Inventory Components
+ * @since 1.3.0
+ * 
+ * @param props - The component props
+ * @param props.item - Optional existing item data for editing mode
+ * @param props.locations - Array of available locations for selection
+ * @param props.onSuccess - Callback invoked when item is successfully created/updated
+ * @param props.onCancel - Callback for cancel action (shows cancel button when provided)
+ * @param props.onLocationCreate - Handler for creating new locations inline
+ * @param props.className - Additional CSS classes for styling
+ * @param props.mode - Form mode: 'create' for new items, 'edit' for existing items
+ * 
+ * @returns The rendered form component with all form fields and validation
+ * 
+ * @example Basic item creation
+ * ```tsx
+ * <ItemForm 
+ *   locations={availableLocations}
+ *   onSuccess={(item) => {
+ *     console.log('Created item:', item.name);
+ *     router.push(`/inventory/${item.id}`);
+ *   }}
+ *   onCancel={() => router.back()}
+ *   onLocationCreate={handleLocationCreation}
+ * />
+ * ```
+ * 
+ * @example Editing existing item
+ * ```tsx
+ * <ItemForm 
+ *   item={existingItem}
+ *   locations={userLocations}
+ *   mode="edit"
+ *   onSuccess={(updatedItem) => {
+ *     showSuccessMessage('Item updated successfully');
+ *     setCurrentItem(updatedItem);
+ *   }}
+ * />
+ * ```
  */
 export function ItemForm({
   item,

@@ -4,3 +4,5 @@
  */
 
 export { LocationSelector } from './LocationSelector';
+export { LocationBreadcrumbs } from './LocationBreadcrumbs';
+export type { LocationBreadcrumbsProps, LocationPathComponent } from './LocationBreadcrumbs';

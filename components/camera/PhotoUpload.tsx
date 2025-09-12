@@ -35,15 +35,55 @@ interface UploadState {
 }
 
 /**
- * PhotoUpload - Secure photo upload component with comprehensive validation
+ * PhotoUpload - Secure photo upload component with comprehensive validation and preview.
  * 
- * Implements security measures from QA assessment SEC-003:
- * - Client-side file validation before upload
- * - Drag-and-drop with security checks
- * - Image preview with validation feedback
- * - Mobile-responsive design for inventory management
+ * Implements security measures from QA assessment SEC-003 including client-side file validation,
+ * drag-and-drop with security checks, image preview with real-time feedback, and mobile-responsive
+ * design optimized for inventory management workflows. Supports both desktop and mobile browsers
+ * with touch-friendly interfaces.
  * 
  * @component
+ * @category Media Components
+ * @since 1.3.0
+ * 
+ * @param props - The component props
+ * @param props.itemId - Unique identifier for the item (for file storage organization)
+ * @param props.currentPhotoUrl - URL of existing photo (for edit mode)
+ * @param props.currentThumbnailUrl - URL of existing thumbnail (for display)
+ * @param props.onPhotoUpload - Callback when photo upload succeeds
+ * @param props.onPhotoRemove - Callback when photo is removed
+ * @param props.disabled - Whether the upload interface is disabled
+ * @param props.className - Additional CSS classes for styling
+ * @param props.maxFileSize - Maximum file size in MB (default: 10MB)
+ * @param props.accept - Accepted file types (default: JPEG, PNG, WebP)
+ * 
+ * @returns The rendered photo upload component with drag-drop and preview
+ * 
+ * @example Basic photo upload
+ * ```tsx
+ * <PhotoUpload 
+ *   itemId="item-123"
+ *   onPhotoUpload={(photoUrl, thumbnailUrl) => {
+ *     setItem(prev => ({
+ *       ...prev, 
+ *       photoUrl, 
+ *       thumbnailUrl
+ *     }));
+ *   }}
+ *   maxFileSize={5}
+ * />
+ * ```
+ * 
+ * @example With existing photo (edit mode)
+ * ```tsx
+ * <PhotoUpload 
+ *   itemId={item.id}
+ *   currentPhotoUrl={item.photoUrl}
+ *   currentThumbnailUrl={item.thumbnailUrl}
+ *   onPhotoRemove={() => updateItem({ photoUrl: null })}
+ *   disabled={isSubmitting}
+ * />
+ * ```
  */
 export function PhotoUpload({
   itemId,
