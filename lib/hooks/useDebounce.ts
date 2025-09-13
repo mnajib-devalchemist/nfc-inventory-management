@@ -86,7 +86,6 @@ export function useAdvancedDebounce<T>(
   const [isFirstExecution, setIsFirstExecution] = useState(true);
 
   useEffect(() => {
-    let handler: NodeJS.Timeout;
     let maxWaitHandler: NodeJS.Timeout | undefined;
 
     // Leading edge execution
@@ -97,7 +96,7 @@ export function useAdvancedDebounce<T>(
     }
 
     // Set up the main debounce timeout
-    handler = setTimeout(() => {
+    const handler = setTimeout(() => {
       setDebouncedValue(value);
       if (maxWaitHandler) {
         clearTimeout(maxWaitHandler);
