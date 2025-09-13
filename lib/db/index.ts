@@ -10,7 +10,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { serverEnv, isDevelopment } from '@/lib/utils/env';
+
+// Only access environment during runtime, not build time
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 /**
  * Global type augmentation for development hot reloading.
@@ -39,7 +41,7 @@ export const prisma =
     log: isDevelopment ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
-        url: serverEnv.DATABASE_URL,
+        url: process.env.DATABASE_URL,
       },
     },
   });

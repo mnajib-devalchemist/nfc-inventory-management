@@ -93,7 +93,11 @@ const clientEnvSchema = z.object({
  * console.log(serverEnv.DATABASE_URL);
  * ```
  */
-export const serverEnv = typeof window === 'undefined' ? serverEnvSchema.parse(process.env) : {} as z.infer<typeof serverEnvSchema>;
+export const serverEnv = typeof window === 'undefined' 
+  ? serverEnvSchema.safeParse(process.env).success 
+    ? serverEnvSchema.parse(process.env)
+    : {} as z.infer<typeof serverEnvSchema>
+  : {} as z.infer<typeof serverEnvSchema>;
 
 /**
  * Validated client-side environment variables with type safety.
