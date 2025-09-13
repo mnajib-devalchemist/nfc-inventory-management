@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { InventoryDashboard } from './components/InventoryDashboard';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui';
 
 /**
  * Loading component for inventory page

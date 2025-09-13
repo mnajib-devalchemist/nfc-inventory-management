@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ItemForm } from '@/components/inventory/ItemForm';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { LocationType } from '@prisma/client';

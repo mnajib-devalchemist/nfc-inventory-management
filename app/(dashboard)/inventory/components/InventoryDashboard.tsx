@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ItemGrid } from '@/components/inventory/ItemGrid';
-import { ItemModal } from '@/components/inventory/ItemModal';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ItemGrid, ItemModal } from '@/components/inventory';
+import { Button, Badge, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { 
   Plus, 
   Package, 
