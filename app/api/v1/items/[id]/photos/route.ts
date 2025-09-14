@@ -30,7 +30,7 @@ const costProtectionService = new CostProtectionService(prisma);
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const startTime = Date.now();
 
@@ -44,6 +44,7 @@ export async function POST(
       );
     }
 
+    const params = await context.params;
     const itemId = params.id;
 
     // Validate item exists and user has access
@@ -218,7 +219,7 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
     // Authentication check
@@ -230,6 +231,7 @@ export async function GET(
       );
     }
 
+    const params = await context.params;
     const itemId = params.id;
 
     // Validate item exists and user has access
