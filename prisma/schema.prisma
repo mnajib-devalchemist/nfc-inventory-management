@@ -39,34 +39,67 @@ model Session {
 }
 
 model User {
-  id                  String            @id @default(cuid())
-  name                String?
-  email               String            @unique
-  emailVerified       DateTime?         @map("email_verified")
-  image               String?
-  createdAt           DateTime          @default(now()) @map("created_at")
-  updatedAt           DateTime          @updatedAt @map("updated_at")
-  preferences         Json?             @default("{}")
-  subscriptionTier    String            @default("free") @map("subscription_tier")
-  defaultHouseholdId  String?           @map("default_household_id")
-  accounts            Account[]
-  households          HouseholdMember[]
-  sessions            Session[]
-  createdItems        Item[]            @relation("CreatedItems")
-  borrowedItems       Item[]            @relation("BorrowedItems")
-  uploadedPhotos      ItemPhoto[]
-  defaultHousehold    Household?        @relation("DefaultHousehold", fields: [defaultHouseholdId], references: [id])
+  id                    String            @id @default(cuid())
+  name                  String?
+  email                 String            @unique
+  emailVerified         DateTime?         @map("email_verified")
+  emailVerifiedIp       String?           @map("email_verified_ip")
+  image                 String?
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  deletedAt             DateTime?         @map("deleted_at")
+  preferences           Json?             @default("{}")
+  subscriptionTier      String            @default("free") @map("subscription_tier")
+  defaultHouseholdId    String?           @map("default_household_id")
+  // QA SECURITY: Password and authentication fields
+  passwordHash          String?           @map("password_hash")
+  lastLoginAt           DateTime?         @map("last_login_at")
+  lastLoginIp           String?           @map("last_login_ip")
+  passwordResetAt       DateTime?         @map("password_reset_at")
+  passwordResetIp       String?           @map("password_reset_ip")
+  registrationIp        String?           @map("registration_ip")
+  registrationUserAgent String?           @map("registration_user_agent")
+  // Relations
+  accounts              Account[]
+  households            HouseholdMember[]
+  sessions              Session[]
+  createdItems          Item[]            @relation("CreatedItems")
+  borrowedItems         Item[]            @relation("BorrowedItems")
+  uploadedPhotos        ItemPhoto[]
+  userConsents          UserConsent[]
+  defaultHousehold      Household?        @relation("DefaultHousehold", fields: [defaultHouseholdId], references: [id])
 
   @@map("users")
 }
 
 model VerificationToken {
+  id         String   @id @default(cuid())
   identifier String
   token      String   @unique
   expires    DateTime
+  type       String   @default("email_verification") // QA SECURITY: Token type tracking
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@unique([identifier, token])
   @@map("verificationtokens")
+}
+
+// QA PRIVACY: GDPR-compliant user consent tracking
+model UserConsent {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  consentType  String   @map("consent_type") // terms_of_service, privacy_policy, marketing_communications, email_verified
+  granted      Boolean
+  grantedAt    DateTime @map("granted_at")
+  revokedAt    DateTime? @map("revoked_at")
+  ipAddress    String   @map("ip_address")
+  userAgent    String   @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, consentType])
+  @@map("user_consents")
 }
 
 model Household {
@@ -298,4 +331,155 @@ enum SearchQueueStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// Migration system models for photo S3 migration
+model MigrationState {
+  id                        String                @id @default(uuid()) @db.Uuid
+  migrationType            String                @default("photo_s3_migration") @map("migration_type") @db.VarChar(50)
+  status                   MigrationStatus       @default(PENDING)
+  batchSize                Int                   @default(100) @map("batch_size")
+  lastProcessedId          String?               @map("last_processed_id") @db.Uuid
+  totalItems               Int                   @default(0) @map("total_items")
+  processedCount           Int                   @default(0) @map("processed_count")
+  successCount             Int                   @default(0) @map("success_count")
+  errorCount               Int                   @default(0) @map("error_count")
+  skippedCount             Int                   @default(0) @map("skipped_count")
+  startedAt                DateTime?             @map("started_at")
+  completedAt              DateTime?             @map("completed_at")
+  pausedAt                 DateTime?             @map("paused_at")
+  resumedAt                DateTime?             @map("resumed_at")
+  estimatedCompletionAt    DateTime?             @map("estimated_completion_at")
+  checkpointData           Json                  @default("{}") @map("checkpoint_data")
+  errorDetails             Json                  @default("[]") @map("error_details")
+  rollbackData             Json                  @default("{}") @map("rollback_data")
+  migrationConfig          Json                  @default("{}") @map("migration_config")
+  avgProcessingTimeMs      Int                   @default(0) @map("avg_processing_time_ms")
+  throughputItemsPerSecond Decimal               @default(0) @map("throughput_items_per_second") @db.Decimal(10, 2)
+  estimatedCostUsd         Decimal               @default(0) @map("estimated_cost_usd") @db.Decimal(10, 4)
+  actualCostUsd            Decimal               @default(0) @map("actual_cost_usd") @db.Decimal(10, 4)
+  createdAt                DateTime              @default(now()) @map("created_at")
+  updatedAt                DateTime              @updatedAt @map("updated_at")
+  createdBy                String?               @map("created_by") @db.VarChar(255)
+
+  // Relations
+  batches                  MigrationBatch[]
+  items                    MigrationItem[]
+
+  @@index([status])
+  @@index([migrationType])
+  @@index([status, processedCount, totalItems])
+  @@map("migration_state")
+}
+
+model MigrationBatch {
+  id              String            @id @default(uuid()) @db.Uuid
+  migrationId     String            @map("migration_id") @db.Uuid
+  batchNumber     Int               @map("batch_number")
+  startId         String?           @map("start_id") @db.Uuid
+  endId           String?           @map("end_id") @db.Uuid
+  itemIds         Json              @default("[]") @map("item_ids")
+  status          MigrationStatus   @default(PENDING)
+  totalItems      Int               @default(0) @map("total_items")
+  processedItems  Int               @default(0) @map("processed_items")
+  successfulItems Int               @default(0) @map("successful_items")
+  failedItems     Int               @default(0) @map("failed_items")
+  startedAt       DateTime?         @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  processingTimeMs Int              @default(0) @map("processing_time_ms")
+  results         Json              @default("{}")
+  errors          Json              @default("[]")
+  s3Operations    Json              @default("{\"uploads\": 0, \"downloads\": 0, \"deletes\": 0, \"list_operations\": 0, \"bytes_transferred\": 0}") @map("s3_operations")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  migration       MigrationState    @relation(fields: [migrationId], references: [id], onDelete: Cascade)
+  items           MigrationItem[]
+
+  @@index([migrationId])
+  @@index([status])
+  @@index([migrationId, batchNumber])
+  @@map("migration_batches")
+}
+
+model MigrationItem {
+  id                String            @id @default(uuid()) @db.Uuid
+  migrationId       String            @map("migration_id") @db.Uuid
+  batchId           String?           @map("batch_id") @db.Uuid
+  itemId            String            @map("item_id") @db.Uuid
+  photoId           String?           @map("photo_id") @db.Uuid
+  originalPath      String?           @map("original_path")
+  status            MigrationStatus   @default(PENDING)
+  originalSize      Int?              @map("original_size")
+  processedSize     Int?              @map("processed_size")
+  fileFormat        String?           @map("file_format") @db.VarChar(10)
+  s3Key             String?           @map("s3_key")
+  s3Url             String?           @map("s3_url")
+  cdnUrl            String?           @map("cdn_url")
+  processingTimeMs  Int               @default(0) @map("processing_time_ms")
+  compressionRatio  Decimal?          @map("compression_ratio") @db.Decimal(5, 2)
+  qualityAchieved   Int?              @map("quality_achieved")
+  errorMessage      String?           @map("error_message")
+  errorCode         String?           @map("error_code") @db.VarChar(50)
+  retryCount        Int               @default(0) @map("retry_count")
+  maxRetries        Int               @default(3) @map("max_retries")
+  rollbackData      Json              @default("{}") @map("rollback_data")
+  startedAt         DateTime?         @map("started_at")
+  completedAt       DateTime?         @map("completed_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  migration         MigrationState    @relation(fields: [migrationId], references: [id], onDelete: Cascade)
+  batch             MigrationBatch?   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([migrationId])
+  @@index([batchId])
+  @@index([status])
+  @@index([itemId])
+  @@map("migration_items")
+}
+
+model AwsUsageTracking {
+  id                                        String    @id @default(uuid()) @db.Uuid
+  trackingDate                             DateTime  @default(dbgenerated("CURRENT_DATE")) @map("tracking_date") @db.Date
+  trackingHour                             Int       @default(dbgenerated("EXTRACT(HOUR FROM CURRENT_TIME)")) @map("tracking_hour")
+  s3StorageBytes                           BigInt    @default(0) @map("s3_storage_bytes")
+  s3RequestsGet                            Int       @default(0) @map("s3_requests_get")
+  s3RequestsPut                            Int       @default(0) @map("s3_requests_put")
+  s3RequestsDelete                         Int       @default(0) @map("s3_requests_delete")
+  s3RequestsList                           Int       @default(0) @map("s3_requests_list")
+  s3DataTransferBytes                      BigInt    @default(0) @map("s3_data_transfer_bytes")
+  cloudfrontRequests                       Int       @default(0) @map("cloudfront_requests")
+  cloudfrontDataTransferBytes              BigInt    @default(0) @map("cloudfront_data_transfer_bytes")
+  cloudfrontInvalidations                  Int       @default(0) @map("cloudfront_invalidations")
+  s3CostEstimateUsd                        Decimal   @default(0) @map("s3_cost_estimate_usd") @db.Decimal(10, 4)
+  cloudfrontCostEstimateUsd                Decimal   @default(0) @map("cloudfront_cost_estimate_usd") @db.Decimal(10, 4)
+  totalCostEstimateUsd                     Decimal   @default(0) @map("total_cost_estimate_usd") @db.Decimal(10, 4)
+  s3StorageFreeTierRemaining               BigInt    @default(5368709120) @map("s3_storage_free_tier_remaining") // 5GB
+  s3GetRequestsFreeTierRemaining           Int       @default(20000) @map("s3_get_requests_free_tier_remaining")
+  s3PutRequestsFreeTierRemaining           Int       @default(2000) @map("s3_put_requests_free_tier_remaining")
+  cloudfrontRequestsFreeTierRemaining      Int       @default(10000000) @map("cloudfront_requests_free_tier_remaining") // 10M
+  cloudfrontDataTransferFreeTierRemaining  BigInt    @default(1073741824000) @map("cloudfront_data_transfer_free_tier_remaining") // 1TB
+  circuitBreakerTriggered                  Boolean   @default(false) @map("circuit_breaker_triggered")
+  circuitBreakerReason                     String?   @map("circuit_breaker_reason")
+  circuitBreakerTriggeredAt                DateTime? @map("circuit_breaker_triggered_at")
+  createdAt                                DateTime  @default(now()) @map("created_at")
+  updatedAt                                DateTime  @updatedAt @map("updated_at")
+
+  @@unique([trackingDate, trackingHour], map: "aws_usage_tracking_unique")
+  @@index([trackingDate])
+  @@index([circuitBreakerTriggered])
+  @@map("aws_usage_tracking")
+}
+
+enum MigrationStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  ROLLBACK
+  ROLLBACK_FAILED
 }

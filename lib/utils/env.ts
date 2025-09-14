@@ -23,6 +23,7 @@ const serverEnvSchema = z.object({
   // AWS Services (other AWS configs below in dedicated section)
   
   // External Service Secrets
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -93,10 +94,8 @@ const clientEnvSchema = z.object({
  * console.log(serverEnv.DATABASE_URL);
  * ```
  */
-export const serverEnv = typeof window === 'undefined' 
-  ? serverEnvSchema.safeParse(process.env).success 
-    ? serverEnvSchema.parse(process.env)
-    : {} as z.infer<typeof serverEnvSchema>
+export const serverEnv = typeof window === 'undefined'
+  ? serverEnvSchema.parse(process.env)
   : {} as z.infer<typeof serverEnvSchema>;
 
 /**
