@@ -951,7 +951,7 @@ export class PhotoMigrationOrchestrator extends EventEmitter<MigrationEvents> {
       where: {
         migrationId: migration.id,
         status: 'COMPLETED',
-        s3Key: { not: null },
+        // Filter non-null s3Key values in the loop below
       },
     });
 

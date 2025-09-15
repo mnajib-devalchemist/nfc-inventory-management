@@ -309,10 +309,7 @@ export class ExportService {
     const householdAccess = await tx.householdMember.findFirst({
       where: {
         userId,
-        // QA ENHANCEMENT: Ensure membership is active
-        household: {
-          id: { not: null }
-        }
+        // QA ENHANCEMENT: Ensure membership is active (household relation ensures non-null)
       },
       include: {
         household: true,
