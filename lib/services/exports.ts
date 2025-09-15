@@ -402,20 +402,24 @@ export class ExportService {
       ]
     };
 
+    // Helper function to safely add AND conditions
+    const addAndCondition = (condition: any) => {
+      if (!whereClause.AND) {
+        whereClause.AND = [];
+      } else if (!Array.isArray(whereClause.AND)) {
+        whereClause.AND = [whereClause.AND];
+      }
+      (whereClause.AND as any[]).push(condition);
+    };
+
     // Apply user-specified filters
     if (filters) {
       if (filters.locationIds && filters.locationIds.length > 0) {
-        whereClause.AND = [
-          ...(whereClause.AND || []),
-          { locationId: { in: filters.locationIds } }
-        ];
+        addAndCondition({ locationId: { in: filters.locationIds } });
       }
 
       if (filters.status && filters.status.length > 0) {
-        whereClause.AND = [
-          ...(whereClause.AND || []),
-          { status: { in: filters.status as any[] } }
-        ];
+        addAndCondition({ status: { in: filters.status as any[] } });
       }
 
       if (filters.createdAfter || filters.createdBefore) {
@@ -423,25 +427,19 @@ export class ExportService {
         if (filters.createdAfter) dateFilter.gte = filters.createdAfter;
         if (filters.createdBefore) dateFilter.lte = filters.createdBefore;
 
-        whereClause.AND = [
-          ...(whereClause.AND || []),
-          { createdAt: dateFilter }
-        ];
+        addAndCondition({ createdAt: dateFilter });
       }
 
       if (filters.tagNames && filters.tagNames.length > 0) {
-        whereClause.AND = [
-          ...(whereClause.AND || []),
-          {
-            tags: {
-              some: {
-                tag: {
-                  name: { in: filters.tagNames }
-                }
+        addAndCondition({
+          tags: {
+            some: {
+              tag: {
+                name: { in: filters.tagNames }
               }
             }
           }
-        ];
+        });
       }
     }
 
