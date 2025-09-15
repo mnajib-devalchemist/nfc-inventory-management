@@ -16,7 +16,7 @@
  * @since 1.8.0
  */
 
-import { PrismaClient, Prisma, Item, ItemPhoto, Tag, Location, Household } from '@prisma/client';
+import { PrismaClient, Prisma, Item, ItemPhoto, Tag, Location, Household, ItemStatus } from '@prisma/client';
 import { createWriteStream, type WriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -419,7 +419,7 @@ export class ExportService {
       }
 
       if (filters.status && filters.status.length > 0) {
-        addAndCondition({ status: { in: filters.status as any[] } });
+        addAndCondition({ status: { in: filters.status } });
       }
 
       if (filters.createdAfter || filters.createdBefore) {

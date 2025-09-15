@@ -8,7 +8,7 @@
  * @since 1.8.0
  */
 
-import type { Item, Location, ItemPhoto, Tag, Household } from '@prisma/client';
+import type { Item, Location, ItemPhoto, Tag, Household, ItemStatus } from '@prisma/client';
 
 /**
  * Supported export file formats
@@ -47,7 +47,7 @@ export interface CreateExportRequest {
     /** Only include items with specific tags */
     tagNames?: string[];
     /** Only include items with specific status */
-    status?: string[];
+    status?: ItemStatus[];
     /** Date range for item creation */
     createdAfter?: Date;
     createdBefore?: Date;
@@ -124,7 +124,7 @@ export interface ExportItemData {
   purchasePrice: number | null;
   currentValue: number | null;
   purchaseDate: Date | null;
-  status: string;
+  status: ItemStatus;
   createdAt: Date;
   updatedAt: Date;
 
