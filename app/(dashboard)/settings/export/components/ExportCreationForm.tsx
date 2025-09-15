@@ -207,7 +207,7 @@ export function ExportCreationForm({ onCreateExport, isLoading }: ExportCreation
           <Checkbox
             id="use-filters"
             checked={useFilters}
-            onCheckedChange={setUseFilters}
+            onCheckedChange={(checked) => setUseFilters(checked === true)}
           />
           <Label htmlFor="use-filters" className="text-base font-medium cursor-pointer">
             Apply Advanced Filters

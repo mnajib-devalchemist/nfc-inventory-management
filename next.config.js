@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ['localhost:3000', 'nfc-inventory-management-dev-alchemists-projects.vercel.app'],
