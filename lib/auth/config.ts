@@ -267,11 +267,11 @@ export const authOptions: NextAuthOptions = {
 
   // QA SECURITY: Custom pages for better control
   pages: {
-    signIn: '/auth/login',
-    signOut: '/auth/logout',
-    error: '/auth/error',
-    verifyRequest: '/auth/verify-request',
-    newUser: '/auth/welcome', // Redirect new users to onboarding
+    signIn: '/login',
+    signOut: '/logout',
+    error: '/error',
+    verifyRequest: '/verify-request',
+    newUser: '/welcome', // Redirect new users to onboarding
   },
 
   callbacks: {

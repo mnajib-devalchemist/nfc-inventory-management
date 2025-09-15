@@ -10,3 +10,4 @@
 
 export { EnhancedLoginForm } from './EnhancedLoginForm';
 export { RegistrationForm } from './RegistrationForm';
+export { ResetPasswordForm } from './ResetPasswordForm';
