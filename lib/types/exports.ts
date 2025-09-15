@@ -200,7 +200,7 @@ export interface CSVColumn {
   header: string;
 
   /** Custom formatting function for the column value */
-  formatter?: (value: any, item: ExportItemData) => string;
+  formatter?: (value: unknown, item: ExportItemData) => string;
 
   /** Whether this column is required in the export */
   required: boolean;

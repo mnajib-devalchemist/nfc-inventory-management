@@ -76,21 +76,21 @@ const DEFAULT_CSV_CONFIG: CSVExportConfig = {
   textQualifier: '"',
   lineEnding: '\n',
   columns: [
-    { key: 'name', header: 'Item Name', formatter: (value) => String(value || ''), required: true },
-    { key: 'description', header: 'Description', formatter: (value) => String(value || ''), required: false },
-    { key: 'quantity', header: 'Quantity', formatter: (value) => String(value || 0), required: true },
-    { key: 'unit', header: 'Unit', formatter: (value) => String(value || 'piece'), required: true },
-    { key: 'purchasePrice', header: 'Purchase Price', formatter: (value) => value ? `$${Number(value).toFixed(2)}` : '', required: false },
-    { key: 'currentValue', header: 'Current Value', formatter: (value) => value ? `$${Number(value).toFixed(2)}` : '', required: false },
-    { key: 'purchaseDate', header: 'Purchase Date', formatter: (value) => value ? new Date(value).toISOString().split('T')[0] : '', required: false },
-    { key: 'status', header: 'Status', formatter: (value) => String(value || 'AVAILABLE'), required: true },
-    { key: 'location', header: 'Location Path', formatter: (value, item) => item.location?.path || '', required: true },
-    { key: 'location', header: 'Location Name', formatter: (value, item) => item.location?.name || '', required: true },
-    { key: 'household', header: 'Household', formatter: (value, item) => item.household?.name || '', required: true },
-    { key: 'photoUrls', header: 'Photo URLs', formatter: (value) => Array.isArray(value) ? value.join(';') : '', required: false },
-    { key: 'tagNames', header: 'Tags', formatter: (value) => Array.isArray(value) ? value.join(',') : '', required: false },
-    { key: 'createdAt', header: 'Created Date', formatter: (value) => new Date(value).toISOString(), required: true },
-    { key: 'updatedAt', header: 'Updated Date', formatter: (value) => new Date(value).toISOString(), required: true },
+    { key: 'name', header: 'Item Name', formatter: (value: unknown) => String(value || ''), required: true },
+    { key: 'description', header: 'Description', formatter: (value: unknown) => String(value || ''), required: false },
+    { key: 'quantity', header: 'Quantity', formatter: (value: unknown) => String(value || 0), required: true },
+    { key: 'unit', header: 'Unit', formatter: (value: unknown) => String(value || 'piece'), required: true },
+    { key: 'purchasePrice', header: 'Purchase Price', formatter: (value: unknown) => value ? `$${Number(value).toFixed(2)}` : '', required: false },
+    { key: 'currentValue', header: 'Current Value', formatter: (value: unknown) => value ? `$${Number(value).toFixed(2)}` : '', required: false },
+    { key: 'purchaseDate', header: 'Purchase Date', formatter: (value: unknown) => value ? new Date(value as string).toISOString().split('T')[0] : '', required: false },
+    { key: 'status', header: 'Status', formatter: (value: unknown) => String(value || 'AVAILABLE'), required: true },
+    { key: 'location', header: 'Location Path', formatter: (value: unknown, item: ExportItemData) => item.location?.path || '', required: true },
+    { key: 'location', header: 'Location Name', formatter: (value: unknown, item: ExportItemData) => item.location?.name || '', required: true },
+    { key: 'household', header: 'Household', formatter: (value: unknown, item: ExportItemData) => item.household?.name || '', required: true },
+    { key: 'photoUrls', header: 'Photo URLs', formatter: (value: unknown) => Array.isArray(value) ? value.join(';') : '', required: false },
+    { key: 'tagNames', header: 'Tags', formatter: (value: unknown) => Array.isArray(value) ? value.join(',') : '', required: false },
+    { key: 'createdAt', header: 'Created Date', formatter: (value: unknown) => new Date(value as string).toISOString(), required: true },
+    { key: 'updatedAt', header: 'Updated Date', formatter: (value: unknown) => new Date(value as string).toISOString(), required: true },
   ]
 };
 
@@ -213,7 +213,7 @@ class StreamingCSVWriter {
    */
   async finalize(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.stream.end((error) => {
+      this.stream.end((error?: Error | null) => {
         if (error) reject(error);
         else resolve();
       });
