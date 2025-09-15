@@ -24,7 +24,7 @@ import { getHouseholdContext, handleHouseholdContextError } from '@/lib/utils/ho
  */
 export async function GET(
   request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -37,7 +37,7 @@ export async function GET(
     }
 
     // 2. Get parameters
-    const { id: locationId } = await params;
+    const { id: locationId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -60,7 +60,7 @@ export async function GET(
     return Response.json(createSuccessResponse(location));
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`GET /api/v1/locations/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {
@@ -95,7 +95,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -108,7 +108,7 @@ export async function PATCH(
     }
 
     // 2. Get parameters and validate request body
-    const { id: locationId } = await params;
+    const { id: locationId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -132,7 +132,7 @@ export async function PATCH(
     return Response.json(createSuccessResponse(updatedLocation));
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`PATCH /api/v1/locations/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {
@@ -179,7 +179,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -192,7 +192,7 @@ export async function DELETE(
     }
 
     // 2. Get parameters
-    const { id: locationId } = await params;
+    const { id: locationId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -210,7 +210,7 @@ export async function DELETE(
     );
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`DELETE /api/v1/locations/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {

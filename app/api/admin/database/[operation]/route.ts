@@ -13,9 +13,9 @@ import { execSync } from 'child_process';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ operation: string }> }
+  context: { params: Promise<{ operation: string }> }
 ) {
-  const { operation } = await params;
+  const { operation } = await context.params;
   try {
     // Check authentication
     const session = await getServerSession(authOptions);

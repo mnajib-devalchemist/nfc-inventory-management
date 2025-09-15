@@ -23,8 +23,8 @@ import { getHouseholdContext, handleHouseholdContextError } from '@/lib/utils/ho
  * @throws {500} Internal Server Error - Unexpected server error
  */
 export async function GET(
-  request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -37,7 +37,7 @@ export async function GET(
     }
 
     // 2. Get parameters
-    const { id: itemId } = await params;
+    const { id: itemId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -60,7 +60,7 @@ export async function GET(
     return Response.json(createSuccessResponse(item));
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`GET /api/v1/items/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {
@@ -94,8 +94,8 @@ export async function GET(
  * @throws {500} Internal Server Error - Unexpected server error
  */
 export async function PATCH(
-  request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -108,7 +108,7 @@ export async function PATCH(
     }
 
     // 2. Get parameters and validate request body
-    const { id: itemId } = await params;
+    const { id: itemId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -132,7 +132,7 @@ export async function PATCH(
     return Response.json(createSuccessResponse(updatedItem));
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`PATCH /api/v1/items/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {
@@ -178,8 +178,8 @@ export async function PATCH(
  * @throws {500} Internal Server Error - Unexpected server error
  */
 export async function DELETE(
-  request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authentication
@@ -192,7 +192,7 @@ export async function DELETE(
     }
 
     // 2. Get parameters
-    const { id: itemId } = await params;
+    const { id: itemId } = await context.params;
     // Get user's household context with security validation
     let householdId: string;
     try {
@@ -210,7 +210,7 @@ export async function DELETE(
     );
 
   } catch (error) {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     console.error(`DELETE /api/v1/items/${resolvedParams.id} error:`, error);
     
     if (error instanceof Error) {
