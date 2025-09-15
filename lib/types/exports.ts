@@ -281,7 +281,7 @@ export interface ExportStatistics {
  */
 export interface ExportError extends Error {
   /** Export-specific error code */
-  code: 'UNAUTHORIZED' | 'DATASET_TOO_LARGE' | 'GENERATION_FAILED' | 'PHOTO_ACCESS_DENIED' | 'MEMORY_LIMIT_EXCEEDED' | 'BACKGROUND_JOB_FAILED';
+  code: 'UNAUTHORIZED' | 'DATASET_TOO_LARGE' | 'EXPORT_GENERATION_FAILED' | 'PHOTO_ACCESS_DENIED' | 'MEMORY_LIMIT_EXCEEDED' | 'BACKGROUND_JOB_FAILED';
 
   /** Export job ID where error occurred */
   jobId?: string;

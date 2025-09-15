@@ -192,7 +192,7 @@ export const ExportErrorSchema = z.object({
   code: z.enum([
     'UNAUTHORIZED',
     'DATASET_TOO_LARGE',
-    'GENERATION_FAILED',
+    'EXPORT_GENERATION_FAILED',
     'PHOTO_ACCESS_DENIED',
     'MEMORY_LIMIT_EXCEEDED',
     'BACKGROUND_JOB_FAILED'
