@@ -25,7 +25,11 @@
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "test:extensions": "tsx scripts/test-extensions.ts",
     "migrate:photos": "tsx scripts/execute-photo-migration.ts",
-    "migrate:photos:dry-run": "tsx scripts/execute-photo-migration.ts -- --dry-run"
+    "migrate:photos:dry-run": "tsx scripts/execute-photo-migration.ts -- --dry-run",
+    "setup:aws-infrastructure": "tsx scripts/setup-aws-infrastructure.ts",
+    "test:s3-connection": "tsx scripts/test-s3-connection.ts",
+    "setup:s3-lifecycle": "tsx scripts/setup-s3-lifecycle.ts",
+    "test:cloudwatch-alerts": "tsx scripts/test-cloudwatch-alerts.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^1.6.0",

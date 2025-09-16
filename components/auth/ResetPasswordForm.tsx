@@ -37,7 +37,7 @@ export function ResetPasswordForm() {
         <CardHeader>
           <CardTitle>Check your email</CardTitle>
           <CardDescription>
-            If an account with that email exists, we've sent you a password reset link.
+            If an account with that email exists, we&apos;ve sent you a password reset link.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -49,7 +49,7 @@ export function ResetPasswordForm() {
       <CardHeader>
         <CardTitle>Reset your password</CardTitle>
         <CardDescription>
-          Enter your email address and we'll send you a link to reset your password.
+          Enter your email address and we&apos;ll send you a link to reset your password.
         </CardDescription>
       </CardHeader>
       <CardContent>
