@@ -19,6 +19,7 @@ import {
 } from '@/lib/services';
 import { getCdnUrl } from '@/lib/config/storage';
 import { validateItem, validatePhotoUpload } from '@/lib/validation';
+import { createSessionAwareRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/middleware/rate-limiting';
 
 const prisma = new PrismaClient();
 const costProtectionService = new CostProtectionService(prisma);
@@ -35,6 +36,15 @@ export async function POST(
   const startTime = Date.now();
 
   try {
+    // Rate limiting check
+    const rateLimitResponse = await createSessionAwareRateLimit(
+      request,
+      RATE_LIMIT_CONFIGS.PHOTO_UPLOAD
+    );
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     // Authentication check
     const session = await getServerSession();
     if (!session?.user?.id) {

@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { validateImageFile } from '@/lib/utils/file-validation';
 import { uploadPhotoAction, removePhotoAction } from '@/lib/actions/photos';
-import { Upload, X, AlertCircle, CheckCircle, Camera, Image as ImageIcon } from 'lucide-react';
+import { validateHEICFile, convertHEICToJPEG } from '@/lib/utils/heic-support';
+import { validatePhotoUpload } from '@/lib/validation';
+import { Upload, X, AlertCircle, CheckCircle, Camera, Image as ImageIcon, FileImage, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -21,6 +23,8 @@ interface PhotoUploadProps {
   className?: string;
   maxFileSize?: number; // in MB
   accept?: string;
+  enableCamera?: boolean;
+  showHEICSupport?: boolean;
 }
 
 /**
@@ -32,6 +36,8 @@ interface UploadState {
   error: string | null;
   success: boolean;
   validating: boolean;
+  converting: boolean;
+  conversionProgress: number;
 }
 
 /**
@@ -93,8 +99,10 @@ export function PhotoUpload({
   onPhotoRemove,
   disabled = false,
   className,
-  maxFileSize = 10, // 10MB default
-  accept = 'image/jpeg,image/jpg,image/png,image/webp'
+  maxFileSize = 50, // 50MB default to accommodate HEIC
+  accept = 'image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+  enableCamera = true,
+  showHEICSupport = true
 }: PhotoUploadProps) {
   // State management
   const [uploadState, setUploadState] = useState<UploadState>({
@@ -102,7 +110,9 @@ export function PhotoUpload({
     progress: 0,
     error: null,
     success: false,
-    validating: false
+    validating: false,
+    converting: false,
+    conversionProgress: 0
   });
   
   const [dragActive, setDragActive] = useState(false);
@@ -120,7 +130,9 @@ export function PhotoUpload({
       progress: 0,
       error: null,
       success: false,
-      validating: false
+      validating: false,
+      converting: false,
+      conversionProgress: 0
     });
     setPreviewUrl(null);
     setSelectedFile(null);
@@ -130,46 +142,105 @@ export function PhotoUpload({
   }, []);
 
   /**
-   * Validate file with comprehensive security checks
+   * Enhanced file validation with HEIC support
    */
-  const validateFile = useCallback(async (file: File): Promise<boolean> => {
+  const validateFile = useCallback(async (file: File): Promise<{
+    valid: boolean;
+    needsConversion: boolean;
+    originalFile: File;
+    processedFile?: File;
+  }> => {
     setUploadState(prev => ({ ...prev, validating: true, error: null }));
 
     try {
-      // Client-side validation using our secure validation utility
-      const validationResult = await validateImageFile(file);
-      
+      // Use enhanced validation with HEIC support
+      const validationResult = validatePhotoUpload(file);
+
       if (!validationResult.valid) {
         setUploadState(prev => ({
           ...prev,
           validating: false,
           error: validationResult.error || 'File validation failed'
         }));
-        return false;
+        return { valid: false, needsConversion: false, originalFile: file };
       }
 
-      // Additional size check against component props
-      const maxSizeBytes = maxFileSize * 1024 * 1024;
-      if (file.size > maxSizeBytes) {
-        setUploadState(prev => ({
-          ...prev,
-          validating: false,
-          error: `File too large. Maximum size is ${maxFileSize}MB.`
-        }));
-        return false;
+      // Check if HEIC conversion is needed
+      if (validationResult.format === 'heic' && validationResult.requiresConversion) {
+        console.log('📸 HEIC file detected, conversion required');
+
+        // Validate HEIC file specifically
+        const heicValidation = await validateHEICFile(file);
+
+        if (!heicValidation.isValid) {
+          setUploadState(prev => ({
+            ...prev,
+            validating: false,
+            error: `HEIC validation failed: ${heicValidation.error}`
+          }));
+          return { valid: false, needsConversion: false, originalFile: file };
+        }
+
+        if (heicValidation.conversionNeeded) {
+          setUploadState(prev => ({
+            ...prev,
+            validating: false,
+            converting: true,
+            conversionProgress: 0
+          }));
+
+          // Convert HEIC to JPEG
+          const conversionResult = await convertHEICToJPEG(file, 0.85);
+
+          if (!conversionResult.success || !conversionResult.convertedBlob) {
+            setUploadState(prev => ({
+              ...prev,
+              converting: false,
+              error: `HEIC conversion failed: ${conversionResult.error}`
+            }));
+            return { valid: false, needsConversion: false, originalFile: file };
+          }
+
+          // Create a new File object from the converted blob
+          const convertedFile = new File(
+            [conversionResult.convertedBlob],
+            file.name.replace(/\.(heic|heif)$/i, '.jpg'),
+            { type: 'image/jpeg' }
+          );
+
+          setUploadState(prev => ({
+            ...prev,
+            converting: false,
+            conversionProgress: 100
+          }));
+
+          console.log('✅ HEIC conversion successful', {
+            originalSize: `${(file.size / 1024).toFixed(1)}KB`,
+            convertedSize: `${(convertedFile.size / 1024).toFixed(1)}KB`,
+            compressionRatio: conversionResult.compressionRatio.toFixed(2)
+          });
+
+          return {
+            valid: true,
+            needsConversion: true,
+            originalFile: file,
+            processedFile: convertedFile
+          };
+        }
       }
 
       setUploadState(prev => ({ ...prev, validating: false }));
-      return true;
+      return { valid: true, needsConversion: false, originalFile: file };
 
     } catch (error) {
-      console.error('File validation error:', error);
+      console.error('❌ File validation error:', error);
       setUploadState(prev => ({
         ...prev,
         validating: false,
+        converting: false,
         error: 'File validation failed'
       }));
-      return false;
+      return { valid: false, needsConversion: false, originalFile: file };
     }
   }, [maxFileSize]);
 
@@ -179,17 +250,30 @@ export function PhotoUpload({
   const handleFileSelect = useCallback(async (file: File) => {
     if (disabled) return;
 
-    // Validate the file
-    const isValid = await validateFile(file);
-    if (!isValid) return;
+    // Validate the file (with HEIC conversion if needed)
+    const validationResult = await validateFile(file);
+    if (!validationResult.valid) return;
+
+    // Use processed file if conversion occurred, otherwise use original
+    const fileToUse = validationResult.processedFile || validationResult.originalFile;
 
     // Create preview URL
-    const preview = URL.createObjectURL(file);
+    const preview = URL.createObjectURL(fileToUse);
     setPreviewUrl(preview);
-    setSelectedFile(file);
+    setSelectedFile(fileToUse);
 
     // Clear any previous errors
     setUploadState(prev => ({ ...prev, error: null, success: false }));
+
+    // Log conversion info if applicable
+    if (validationResult.needsConversion) {
+      console.log('📸 File converted for upload:', {
+        original: file.name,
+        converted: fileToUse.name,
+        originalSize: `${(file.size / 1024).toFixed(1)}KB`,
+        convertedSize: `${(fileToUse.size / 1024).toFixed(1)}KB`
+      });
+    }
   }, [disabled, validateFile]);
 
   /**
@@ -374,14 +458,22 @@ export function PhotoUpload({
                 
                 <div className="space-y-2">
                   <p className="text-lg font-medium">
-                    {uploadState.validating ? 'Validating file...' : 'Drop your photo here'}
+                    {uploadState.validating ? 'Validating file...' :
+                     uploadState.converting ? 'Converting HEIC...' :
+                     'Drop your photo here'}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     or click to browse files
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    JPEG, PNG, WebP up to {maxFileSize}MB
+                    JPEG, PNG, WebP{showHEICSupport ? ', HEIC' : ''} up to {maxFileSize}MB
                   </p>
+                  {showHEICSupport && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      <Smartphone className="h-3 w-3 inline mr-1" />
+                      HEIC files from iPhone will be automatically converted
+                    </p>
+                  )}
                 </div>
 
                 <Button
@@ -429,12 +521,27 @@ export function PhotoUpload({
               </div>
 
               {/* Upload Progress */}
-              {uploadState.uploading && (
+              {(uploadState.uploading || uploadState.converting) && (
                 <div className="absolute bottom-2 left-2 right-2 bg-white/90 rounded-full overflow-hidden">
                   <div
-                    className="bg-primary h-2 transition-all duration-300"
-                    style={{ width: `${uploadState.progress}%` }}
+                    className={cn(
+                      "h-2 transition-all duration-300",
+                      uploadState.converting ? "bg-blue-500" : "bg-primary"
+                    )}
+                    style={{
+                      width: `${uploadState.converting ? uploadState.conversionProgress : uploadState.progress}%`
+                    }}
                   />
+                </div>
+              )}
+
+              {/* Conversion Status */}
+              {uploadState.converting && (
+                <div className="absolute top-2 left-2 right-2">
+                  <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full text-center">
+                    <FileImage className="h-3 w-3 inline mr-1" />
+                    Converting HEIC...
+                  </div>
                 </div>
               )}
             </div>

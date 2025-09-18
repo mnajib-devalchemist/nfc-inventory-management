@@ -23,7 +23,7 @@ const nextConfig = {
       ...config.resolve.alias,
       '@': __dirname,
     };
-    
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -31,6 +31,42 @@ const nextConfig = {
       };
     }
     return config;
+  },
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/manifest.json',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/manifest+json',
+          },
+        ],
+      },
+      // Security headers for camera access
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=self, microphone=(), geolocation=(), payment=()',
+          },
+        ],
+      },
+    ];
   },
 };
 

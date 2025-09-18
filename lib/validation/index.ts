@@ -120,14 +120,16 @@ export {
 } from './exports';
 
 /**
- * Validate photo upload file
+ * Enhanced photo upload validation with HEIC support
  */
 export function validatePhotoUpload(file: File): {
   valid: boolean;
   error?: string;
+  requiresConversion?: boolean;
+  format?: string;
 } {
-  // Check file size (max 10MB)
-  const maxSize = 10 * 1024 * 1024;
+  // Check file size (max 50MB to accommodate HEIC files)
+  const maxSize = 50 * 1024 * 1024;
   if (file.size > maxSize) {
     return {
       valid: false,
@@ -135,12 +137,36 @@ export function validatePhotoUpload(file: File): {
     };
   }
 
-  // Check file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-  if (!allowedTypes.includes(file.type)) {
+  // Check minimum file size (prevent empty/corrupt files)
+  if (file.size < 1024) {
     return {
       valid: false,
-      error: `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`
+      error: 'File is too small or may be corrupted.'
+    };
+  }
+
+  // Enhanced file type checking with HEIC support
+  const standardTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+  const heicTypes = ['image/heic', 'image/heif'];
+  const allAllowedTypes = [...standardTypes, ...heicTypes];
+
+  // Check file extension as backup for HEIC detection
+  const fileExtension = file.name.toLowerCase().split('.').pop();
+  const heicExtensions = ['heic', 'heif'];
+  const standardExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+
+  const isHEICByType = heicTypes.includes(file.type);
+  const isHEICByExtension = heicExtensions.includes(fileExtension || '');
+  const isStandardType = standardTypes.includes(file.type);
+  const isStandardExtension = standardExtensions.includes(fileExtension || '');
+
+  const isHEIC = isHEICByType || isHEICByExtension;
+  const isStandardImage = isStandardType || isStandardExtension;
+
+  if (!isHEIC && !isStandardImage) {
+    return {
+      valid: false,
+      error: `Invalid file type. Allowed types: ${allAllowedTypes.join(', ')}, plus HEIC/HEIF files.`
     };
   }
 
@@ -152,7 +178,38 @@ export function validatePhotoUpload(file: File): {
     };
   }
 
-  return { valid: true };
+  // Check for suspicious filename patterns
+  const suspiciousPatterns = ['.exe', '.scr', '.bat', '.cmd', '.com', '.pif', '.vbs', '.js'];
+  const fileName = file.name.toLowerCase();
+  if (suspiciousPatterns.some(pattern => fileName.includes(pattern))) {
+    return {
+      valid: false,
+      error: 'Filename contains suspicious patterns'
+    };
+  }
+
+  // Determine format and conversion requirements
+  let format = 'unknown';
+  let requiresConversion = false;
+
+  if (isHEIC) {
+    format = 'heic';
+    requiresConversion = true; // HEIC files need conversion for web compatibility
+  } else if (file.type === 'image/jpeg' || fileExtension === 'jpg' || fileExtension === 'jpeg') {
+    format = 'jpeg';
+  } else if (file.type === 'image/png' || fileExtension === 'png') {
+    format = 'png';
+  } else if (file.type === 'image/webp' || fileExtension === 'webp') {
+    format = 'webp';
+  } else if (file.type === 'image/avif' || fileExtension === 'avif') {
+    format = 'avif';
+  }
+
+  return {
+    valid: true,
+    requiresConversion,
+    format
+  };
 }
 
 /**
