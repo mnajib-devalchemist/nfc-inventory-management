@@ -4,3 +4,6 @@
  */
 
 export { PhotoUpload } from './PhotoUpload';
+export { CameraCapture } from './CameraCapture';
+export { PhotoGallery } from './PhotoGallery';
+export { PhotoEditor } from './PhotoEditor';
